@@ -38,7 +38,18 @@
             <template #default="{ row }"><span class="mono">{{ row.memberId }}</span></template>
           </el-table-column>
           <el-table-column prop="currency" label="币种" width="90" />
-          <el-table-column prop="netAmount" label="净头寸" min-width="160" />
+          <el-table-column prop="netAmount" label="净头寸（正应收/负应付）" min-width="200">
+            <template #default="{ row }">
+              <span :class="amountClass(row.netAmount)">{{ row.netAmount }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="收付方向" width="110">
+            <template #default="{ row }">
+              <el-tag v-if="directionOf(row.netAmount) === '应收'" type="success" size="small">应收</el-tag>
+              <el-tag v-else-if="directionOf(row.netAmount) === '应付'" type="danger" size="small">应付</el-tag>
+              <el-tag v-else type="info" size="small">平</el-tag>
+            </template>
+          </el-table-column>
         </el-table>
 
         <h3 style="margin:20px 0 10px">参与义务</h3>
@@ -78,6 +89,21 @@ function formatTime(v) {
   return v ? new Date(v).toLocaleString() : '-'
 }
 
+// 业务约定：净头寸为正=应收（收款），为负=应付（付款）
+function directionOf(netAmount) {
+  const n = Number(netAmount)
+  if (n > 0) return '应收'
+  if (n < 0) return '应付'
+  return '平'
+}
+
+function amountClass(netAmount) {
+  const n = Number(netAmount)
+  if (n > 0) return 'amount-receivable'
+  if (n < 0) return 'amount-payable'
+  return ''
+}
+
 async function load() {
   loading.value = true
   try {
@@ -101,3 +127,14 @@ async function settle() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.amount-receivable {
+  color: var(--el-color-success);
+  font-weight: 600;
+}
+.amount-payable {
+  color: var(--el-color-danger);
+  font-weight: 600;
+}
+</style>

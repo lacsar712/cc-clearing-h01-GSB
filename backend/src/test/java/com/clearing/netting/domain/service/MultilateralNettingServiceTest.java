@@ -47,8 +47,51 @@ class MultilateralNettingServiceTest {
         BigDecimal sum = positions.stream().map(NetPosition::getNetAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         assertEquals(0, sum.compareTo(BigDecimal.ZERO));
 
-        // Weak assertion: only Σ=0 and size (does not lock sign semantics).
         assertEquals(3, positions.size());
+    }
+
+    @Test
+    void signFollowsPayDirectionPayableNegativeReceivablePositive() {
+        // Business convention: payer (付款方) net = payable  -> negative
+        //                      payee (收款方) net = receivable -> positive
+        List<TradeObligation> opens = List.of(
+                obligation("A", "B", "100"),
+                obligation("B", "C", "60"),
+                obligation("C", "A", "40")
+        );
+        // A: pays 100, receives 40 -> -60 (net payer)
+        // B: receives 100, pays 60 -> +40 (net payee)
+        // C: receives 60, pays 40  -> +20 (net payee)
+        List<NetPosition> positions = service.net("run-1", "USD", opens, Map.of("A", a, "B", b, "C", c));
+        Map<String, BigDecimal> netByMember = new java.util.HashMap<>();
+        for (NetPosition p : positions) {
+            netByMember.put(p.getMemberId(), p.getNetAmount());
+        }
+
+        assertEquals(0, netByMember.get("A").compareTo(new BigDecimal("-60")),
+                "net payer A must be negative (payable)");
+        assertEquals(0, netByMember.get("B").compareTo(new BigDecimal("40")),
+                "net payee B must be positive (receivable)");
+        assertEquals(0, netByMember.get("C").compareTo(new BigDecimal("20")),
+                "net payee C must be positive (receivable)");
+
+        BigDecimal sum = netByMember.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertEquals(0, sum.compareTo(BigDecimal.ZERO), "ΣnetAmount must stay 0");
+    }
+
+    @Test
+    void singleObligationPayerNegativePayeePositive() {
+        List<TradeObligation> opens = List.of(obligation("A", "B", "10"));
+        List<NetPosition> positions = service.net("run-4", "USD", opens, Map.of("A", a, "B", b));
+        Map<String, BigDecimal> netByMember = new java.util.HashMap<>();
+        for (NetPosition p : positions) {
+            netByMember.put(p.getMemberId(), p.getNetAmount());
+        }
+
+        assertEquals(0, netByMember.get("A").compareTo(new BigDecimal("-10")),
+                "payer A must be negative (payable)");
+        assertEquals(0, netByMember.get("B").compareTo(new BigDecimal("10")),
+                "payee B must be positive (receivable)");
     }
 
     @Test
