@@ -68,8 +68,10 @@ public class MultilateralNettingService {
 
         for (TradeObligation o : openObligations) {
             BigDecimal amt = o.getAmount();
-            nets.merge(o.getPayerMemberId(), amt, BigDecimal::add);
-            nets.merge(o.getPayeeMemberId(), amt.negate(), BigDecimal::add);
+            // Convention: positive netAmount = receivable, negative = payable.
+            // The payer owes money (negative), the payee is owed money (positive).
+            nets.merge(o.getPayerMemberId(), amt.negate(), BigDecimal::add);
+            nets.merge(o.getPayeeMemberId(), amt, BigDecimal::add);
         }
 
         BigDecimal sum = BigDecimal.ZERO.setScale(8, RoundingMode.HALF_UP);

@@ -46,9 +46,28 @@ class MultilateralNettingServiceTest {
 
         BigDecimal sum = positions.stream().map(NetPosition::getNetAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         assertEquals(0, sum.compareTo(BigDecimal.ZERO));
-
-        // Weak assertion: only Σ=0 and size (does not lock sign semantics).
         assertEquals(3, positions.size());
+
+        // Direction semantics: positive = receivable, negative = payable.
+        // A pays 100, receives 40 -> -60; B receives 100, pays 60 -> +40; C receives 60, pays 40 -> +20.
+        Map<String, BigDecimal> byMember = positions.stream().collect(
+                java.util.stream.Collectors.toMap(NetPosition::getMemberId, NetPosition::getNetAmount));
+        assertEquals(0, byMember.get("A").compareTo(new BigDecimal("-60.00000000")));
+        assertEquals(0, byMember.get("B").compareTo(new BigDecimal("40.00000000")));
+        assertEquals(0, byMember.get("C").compareTo(new BigDecimal("20.00000000")));
+    }
+
+    @Test
+    void payerIsNegativePayeeIsPositive() {
+        List<TradeObligation> opens = List.of(obligation("A", "B", "100"));
+        List<NetPosition> positions = service.net("run-1b", "USD", opens, Map.of("A", a, "B", b));
+
+        Map<String, BigDecimal> byMember = positions.stream().collect(
+                java.util.stream.Collectors.toMap(NetPosition::getMemberId, NetPosition::getNetAmount));
+        assertEquals(0, byMember.get("A").compareTo(new BigDecimal("-100.00000000")),
+                "payer must be negative (payable)");
+        assertEquals(0, byMember.get("B").compareTo(new BigDecimal("100.00000000")),
+                "payee must be positive (receivable)");
     }
 
     @Test

@@ -38,7 +38,7 @@
             <template #default="{ row }"><span class="mono">{{ row.memberId }}</span></template>
           </el-table-column>
           <el-table-column prop="currency" label="币种" width="90" />
-          <el-table-column prop="netAmount" label="净头寸" min-width="160" />
+          <el-table-column prop="netAmount" label="净头寸（正应收/负应付）" min-width="160" />
         </el-table>
 
         <h3 style="margin:20px 0 10px">参与义务</h3>
